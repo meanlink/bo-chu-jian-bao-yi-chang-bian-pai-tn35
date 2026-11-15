@@ -7,10 +7,11 @@ from src.middlewares.auth import current_user, can_write, admin_only
 from src.services import jobs
 from src.services.audit import record
 from src.utils.serialization import job_dict
+from src.services.handover import visible_condition
 router=APIRouter(prefix='/jobs')
 @router.get('')
 def listing(db=Depends(get_db),u=Depends(current_user)):
-    return [job_dict(j) for j in db.scalars(select(Job).order_by(Job.id.desc()).limit(100))]
+    return [job_dict(j) for j in db.scalars(select(Job).where(visible_condition(Job)).order_by(Job.id.desc()).limit(100))]
 @router.post('',status_code=201)
 def create(data:JobInput,db=Depends(get_db),u=Depends(can_write)):
     j=jobs.create(db,data,u); record(db,u.email,'job.create',{'id':j.id,'params':j.params})
@@ -18,12 +19,12 @@ def create(data:JobInput,db=Depends(get_db),u=Depends(can_write)):
 @router.get('/{id}')
 def detail(id:int,db=Depends(get_db),u=Depends(current_user)):
     j=db.get(Job,id)
-    if not j: raise HTTPException(404,'分析任务不存在')
+    if not j or not db.scalar(select(Job.id).where(Job.id==id,visible_condition(Job))): raise HTTPException(404,'分析任务不存在')
     return job_dict(j)
 @router.post('/{id}/approve')
 def approve(id:int,db=Depends(get_db),u=Depends(admin_only)):
     j=db.get(Job,id)
-    if not j: raise HTTPException(404,'分析任务不存在')
+    if not j or not db.scalar(select(Job.id).where(Job.id==id,visible_condition(Job))): raise HTTPException(404,'分析任务不存在')
     if j.status!='completed':raise HTTPException(409,'仅已完成结果可以批准')
     j.approved=True; record(db,u.email,'job.approve',{'id':id}); db.commit()
     return job_dict(j)

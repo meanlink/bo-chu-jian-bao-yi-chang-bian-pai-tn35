@@ -9,3 +9,10 @@ export async function download(id,format){
  if(!r.ok)throw new Error('下载失败，请重试');
  const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='分析归档-'+id+'.'+format;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
 }
+
+export async function downloadPackage(){
+ const r=await fetch('/api/handover/export',{headers:{Authorization:'Bearer '+session.token}});
+ if(!r.ok){const d=await r.json().catch(()=>({detail:'导出失败，请重试'}));throw new Error(typeof d.detail==='string'?d.detail:'导出失败，请重试');}
+ const name=decodeURIComponent(r.headers.get('X-Handover-Filename')||'handover.zip');
+ const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+}

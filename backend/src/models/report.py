@@ -1,4 +1,4 @@
-from sqlalchemy import String, Double, ForeignKey, Boolean
+from sqlalchemy import String, Double, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from src.config.database import Base
 class Report(Base):
@@ -10,6 +10,7 @@ class Report(Base):
     interval_seconds: Mapped[int]
     next_run: Mapped[float] = mapped_column(Double)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    handover_import_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
 class Delivery(Base):
     __tablename__ = 'deliveries'
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -18,3 +19,4 @@ class Delivery(Base):
     checksum: Mapped[str] = mapped_column(String(64))
     filename: Mapped[str] = mapped_column(String(160))
     destination: Mapped[str] = mapped_column(String(120))
+    handover_import_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)

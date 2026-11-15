@@ -10,10 +10,11 @@ from src.middlewares.auth import current_user, admin_only
 from src.services import reports
 from src.services.audit import record
 from src.utils.serialization import report_dict, delivery_dict
+from src.services.handover import visible_condition
 router=APIRouter()
 @router.get('/reports')
 def listing(db=Depends(get_db),u=Depends(current_user)):
-    return [report_dict(r) for r in db.scalars(select(Report).order_by(Report.id.desc()))]
+    return [report_dict(r) for r in db.scalars(select(Report).where(visible_condition(Report)).order_by(Report.id.desc()))]
 @router.post('/reports',status_code=201)
 def create(data:ReportInput,db=Depends(get_db),u=Depends(admin_only)):
     r=reports.create(db,data); record(db,u.email,'report.schedule',{'id':r.id,'destination':r.destination}); db.commit()
@@ -21,16 +22,16 @@ def create(data:ReportInput,db=Depends(get_db),u=Depends(admin_only)):
 @router.post('/reports/{id}/toggle')
 def toggle(id:int,db=Depends(get_db),u=Depends(admin_only)):
     r=db.get(Report,id)
-    if not r:raise HTTPException(404,'分发计划不存在')
+    if not r or not db.scalar(select(Report.id).where(Report.id==id,visible_condition(Report))):raise HTTPException(404,'分发计划不存在')
     r.enabled=not r.enabled;record(db,u.email,'report.toggle',{'id':id,'enabled':r.enabled});db.commit()
     return report_dict(r)
 @router.get('/deliveries')
 def deliveries(db=Depends(get_db),u=Depends(current_user)):
-    return [delivery_dict(d) for d in db.scalars(select(Delivery).order_by(Delivery.id.desc()).limit(100))]
+    return [delivery_dict(d) for d in db.scalars(select(Delivery).where(visible_condition(Delivery)).order_by(Delivery.id.desc()).limit(100))]
 @router.get('/deliveries/{id}/download')
 def download(id:int,format:str='csv',db=Depends(get_db),u=Depends(current_user)):
     d=db.get(Delivery,id)
-    if not d:raise HTTPException(404,'归档不存在')
+    if not d or not db.scalar(select(Delivery.id).where(Delivery.id==id,visible_condition(Delivery))):raise HTTPException(404,'归档不存在')
     if format not in ('csv','json'):raise HTTPException(422,'支持 CSV 或 JSON')
     filename=d.filename+('.json' if format=='json' else '')
     p=os.path.join(ARTIFACT_DIR,filename)

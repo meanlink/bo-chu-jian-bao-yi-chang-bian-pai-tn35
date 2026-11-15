@@ -34,6 +34,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-bulletin-ewma-development-only}
       SEED_DEMO: ${SEED_DEMO:-true}
       ARTIFACT_DIR: /artifacts
+      SITE_NAME: ${SITE_NAME:-主站}
     ports: ["${BACKEND_PORT:-19219}:8000"]
     volumes: ["analysis-artifacts:/artifacts"]
     depends_on:
